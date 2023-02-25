@@ -1,0 +1,71 @@
+version: '3'
+
+networks:
+  alphacloudnet:
+    external:
+      name: alphacloudnet
+
+services:
+## app
+  assessment-app:
+    env_file: .env
+    restart: unless-stopped
+    build:
+      context: ./app/
+      dockerfile: ${DOCKERFILE_ENVIRONMENT_PATH}
+      args:
+        - NON_ROOT_UID=${NON_ROOT_UID}
+        - PHP_VERSION=${PHP_VERSION}
+        - APP_PATH=${APP_CODE_PATH_CONTAINER}
+    environment:
+      - APP_PATH=${APP_CODE_PATH_CONTAINER}
+    volumes:
+      - ${APP_CODE_PATH_SOURCE}:${APP_CODE_PATH_CONTAINER}
+    ports:
+      - "${APP_PORT}:${PHP_FPM_PORT}"
+    container_name: assessment-app
+    networks:
+      - alphacloudnet
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "5"
+
+## MySQL
+  assessment-app-mysql:
+    env_file: .env
+    image: mysql:${MYSQL_VERSION}
+    restart: unless-stopped
+    environment:
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql:/etc/mysql/conf.d
+    ports:
+      - "${MYSQL_PORT}:3306"
+    container_name: assessment-app-mysql
+    networks:
+      - alphacloudnet
+
+## Nginx
+  assessment-app-nginx:
+    env_file: .env
+    build:
+      context: ./nginx/
+      dockerfile: ${DOCKERFILE_ENVIRONMENT_PATH}
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    container_name: assessment-app-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${APP_CODE_PATH_SOURCE}:/var/www/
+      - ${NGINX_LOCAL_CONF_PATH}:/etc/nginx/conf.d/
+    networks:
+      - alphacloudnet
