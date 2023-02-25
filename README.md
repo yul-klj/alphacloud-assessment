@@ -49,7 +49,8 @@ After cloning those repositories:
 
 - Before running the test, kindly truncate the `notifications` table
 
-- Unittests result as below
+- Unittests result as below <br />
+
 ![Screenshot](unittest.jpg)
 
 
